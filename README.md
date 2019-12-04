@@ -4,15 +4,16 @@ Tetromino tiling bot
 
 ## Installation
 
-```go get github.com/caffeineism/dizzy```
+* ```go get github.com/caffeineism/dizzy```
 
-## Built with
+## Dependencies
 
-* [Shiny](https://github.com/golang/exp/tree/master/shiny) - Experimental Go package for rendering and key event framework
+* ```go get golang.org/x/exp/shiny```
+* ```go get golang.org/x/mobile/event```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details
+* This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details
 
 ## Acknowledgments
 
