@@ -11,10 +11,6 @@ Tetromino tiling bot
 * ```go get golang.org/x/exp/shiny```
 * ```go get golang.org/x/mobile/event```
 
-## License
-
-* This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details
-
 ## Acknowledgments
 
 * [Colin Fahey, as well as Pierre Dellacherie's algorithm](https://www.colinfahey.com/tetris/tetris.html)
