@@ -62,12 +62,12 @@ func (p pos) inBounds() bool {
 		// Piece escapes side boundary.
 		return false
 	}
-	if p.y >= slab && p.y+pieceRows <= roof {
+	if p.y >= slab && p.y+pieceRows < roof {
 		// Fast path for when piece is definitely inside top/bottom boundary.
 		return true
 	}
 	for i := 0; i < pieceRows; i++ {
-		if p.pieceBits(i) != 0 && (p.y+i >= roof || p.y+i < slab) {
+		if p.pieceBits(i) != 0 && (p.y+i > roof || p.y+i < slab) {
 			// Piece escapes top or bottom.
 			return false
 		}
