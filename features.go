@@ -54,9 +54,9 @@ func rowTransitions(s signal) float64 {
 	// Then, we can xor this with the original that has two filled bits on the
 	// left border. What is left is a row with set bits in place of transitions.
 	// We take the popcount of that to get the total transitions.
-	for i := s.summit; i >= 0; i-- {
+	for i := s.summit; i >= slab; i-- {
 		row := s.board[i]
-		bits.OnesCount64(((row << 1) | walledRow) ^ (row | leftBorderRow))
+		sum += bits.OnesCount64(((row << 1) | walledRow) ^ (row | leftBorderRow))
 	}
 	return float64(sum)
 }
