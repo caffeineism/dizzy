@@ -1,11 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"strconv"
-	"strings"
-)
-
 // The length of a board slice is equal to height + 5 above + 3 below
 // Example indexes of a board 10 row height:
 // 17
@@ -90,92 +84,4 @@ func (b board) clearLines(p pos, summit int) (board, int, int) {
 		b[summit+i+1] = 0
 	}
 	return b, summit, lines
-}
-
-const strEmptyCell = "  "
-const strFilledCell = "▓▓"
-
-// print writes the board contents to stdout.
-// Right-most board column corresponds with 1s bit.
-func (b board) print(p pos, strat ...strategy) {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%vy %vx", p.y, p.x))
-	sb.WriteString("\n")
-	sb.WriteString(" ")
-	for i := 0; i < bWidth; i++ {
-		sb.WriteString("__") // Top border
-	}
-	sb.WriteString("\n")
-	for i := roof - 1; i >= slab; i-- {
-		row := stringRow(b[i])
-		var onPieceRow bool
-		if i >= p.y && i < p.y+pieceRows {
-			if pBits := p.pieceBits(i - p.y); pBits != 0 {
-				onPieceRow = true
-				sb.WriteString("|")
-				for k := bWidth - 1; k >= 0; k-- {
-					if 1<<uint64(k)&pBits != 0 {
-						sb.WriteString("[]")
-					} else {
-						if 1<<uint64(k)&b[i] != 0 {
-							sb.WriteString(strFilledCell)
-						} else {
-							sb.WriteString(strEmptyCell)
-						}
-					}
-				}
-				sb.WriteString("|")
-			}
-		}
-		if !onPieceRow {
-			sb.WriteString(row)
-		}
-		// Row labels
-		sb.WriteString(" " + strconv.Itoa(i) + "\n")
-	}
-	sb.WriteString(" ")
-	for i := 0; i < bWidth; i++ {
-		sb.WriteString("‾‾") // Bottom border
-	}
-	sb.WriteString("\n ")
-	for i := 0; i < bWidth; i++ {
-		sb.WriteString(strconv.Itoa(i+1) + " ") // Column labels
-	}
-	sb.WriteString("\n")
-	fmt.Printf(sb.String())
-}
-
-func stringRow(r uint64) string {
-	var sb strings.Builder
-	sb.WriteString("|") // Left side border
-	for j := bWidth - 1; j >= 0; j-- {
-		if 1<<uint64(j)&r != 0 {
-			sb.WriteString(strFilledCell)
-		} else {
-			sb.WriteString(strEmptyCell)
-		}
-	}
-	// Right side border and row labels
-	sb.WriteString("|")
-	return sb.String()
-}
-
-func stringPiece(r uint64) string {
-	var sb strings.Builder
-	emptyCell := "0"
-	filledCell := "1"
-	for j := 63; j >= 0; j-- {
-		if 1<<uint64(j)&r != 0 {
-			sb.WriteString(filledCell)
-		} else {
-			sb.WriteString(emptyCell)
-		}
-		if j%4 == 0 {
-			sb.WriteString("\n")
-		}
-		if j%16 == 0 {
-			sb.WriteString("\n")
-		}
-	}
-	return sb.String()
 }
