@@ -8,7 +8,7 @@ import (
 func main() {
 	// initRender()
 	strat := strategy{
-		weights:  []float64{-2, -10, -.1, -1},
+		weights:  []float64{-4, -10, -.1, -2},
 		features: []feature{landingHeight, coveredCells, filledCells, rowTransitions},
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
