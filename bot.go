@@ -6,11 +6,11 @@ import (
 )
 
 func (a agent) run() {
-	a.print(a.pos)
+	a.print()
 	for false == a.gameOver {
 		a.pos = a.findBestPlacement(a.findPlacements(a.piece, a.colHeights), a.signal)
+		a.print()
 		a = a.lockAndNewPiece()
-		a.print(a.pos)
 		time.Sleep(500 * time.Millisecond)
 	}
 }
