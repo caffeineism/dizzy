@@ -132,8 +132,10 @@ func initRender() {
 }
 
 func moveAction(cb *colorBoard, delta int, buf screen.Buffer, win screen.Window, key key.Code) {
+	cb.mu.Lock()
 	stamp := time.Now()
 	cb.keyStamps[key] = stamp
+	cb.mu.Unlock()
 	p := cb.move(delta)
 	if cb.allows(p) {
 		cb.pos = p
@@ -147,8 +149,10 @@ func moveAction(cb *colorBoard, delta int, buf screen.Buffer, win screen.Window,
 }
 
 func descendAction(cb *colorBoard, delta int, buf screen.Buffer, win screen.Window, key key.Code) {
+	cb.mu.Lock()
 	stamp := time.Now()
 	cb.keyStamps[key] = stamp
+	cb.mu.Unlock()
 	p := cb.descend(delta)
 	if cb.allows(p) {
 		cb.pos = p
@@ -200,7 +204,7 @@ func drawBoard(img *image.RGBA, b *colorBoard, bufWidth, size, startX, startY in
 		}
 	}
 	// Board
-	for i := slab; i < roof; i++ {
+	for i := slab; i <= roof; i++ {
 		for j, cell := range b.cells[i] {
 			for x := startX + size*(bWidth-j-1); x < startX+size*(bWidth-j); x++ {
 				r := numRows - rowsAbove - i - 1
@@ -248,8 +252,8 @@ func makeColorBoard() colorBoard {
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	strat := strategy{
-		weights:  []float64{-10, -1, -1},
-		features: []feature{landingHeight, coveredCells, filledCells},
+		weights:  []float64{-4, -10, -.1, -2},
+		features: []feature{landingHeight, coveredCells, filledCells, rowTransitions},
 	}
 	return colorBoard{
 		agent: agent{
@@ -317,13 +321,9 @@ func getKeys() keySet {
 }
 
 func renderBoard(cb *colorBoard, win screen.Window, buf screen.Buffer) {
-	cb.print(cb.pos)
+	cb.print()
 	cb.mu.Lock()
 	drawToBuffer(buf.RGBA(), cb)
 	win.Upload(image.Point{}, buf, buf.Bounds())
 	cb.mu.Unlock()
-	// for i := len(cb.colHeights) - 1; i >= 0; i-- {
-	// 	fmt.Printf(" %v", cb.colHeights[i])
-	// }
-	// fmt.Println()
 }
