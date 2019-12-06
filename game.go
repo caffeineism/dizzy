@@ -19,8 +19,8 @@ type agent struct {
 type signal struct {
 	board
 	pos
-	colHeights    [bWidth]int
-	summit, lines int
+	colHeights                 [bWidth]int
+	summit, lines, filledCells int
 }
 
 // pos stores the type of piece as well as it's orientation and x, y
@@ -81,6 +81,7 @@ func (s signal) lock(p pos) signal {
 	s.board = s.merge(s.pos)
 	s.board, s.summit, s.lines = s.clearLines(s.pos, s.summit)
 	s.colHeights = updateColHeights(s.board, s.colHeights, s.pos, s.lines)
+	s.filledCells += pieceFilledCells - s.lines*bWidth
 	return s
 }
 

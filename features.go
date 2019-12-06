@@ -30,11 +30,7 @@ func coveredCells(s signal) float64 {
 
 // filledCells is analogous to cleared lines.
 func filledCells(s signal) float64 {
-	var sum int
-	for i := s.summit; i >= slab; i-- {
-		sum += bits.OnesCount64(s.board[i])
-	}
-	return float64(sum)
+	return float64(s.filledCells)
 }
 
 const (
@@ -61,4 +57,31 @@ func rowTransitions(s signal) float64 {
 	return float64(sum)
 }
 
-// TODO TEST ROWTRANSITIONS
+// colTransitions counts how many times a filled cell neighbors an empty cell
+// above or below it. Adapted from Dellacherie's original feature.
+func colTransitions(s signal) float64 {
+	var sum int
+	for i := s.summit; i >= slab; i-- {
+		// xor neighboring rows. Set bits are where transitions occurred.
+		sum += bits.OnesCount64(s.board[i+1] ^ s.board[i])
+	}
+	sum += bits.OnesCount64(s.board[slab] ^ filledRow) // Bottom row and floor
+	return float64(sum)
+}
+
+// rowsWithHoles counts the number of rows that have at least one covered empty
+// cell. Adapted from Thiery and Scherrer's original feature.
+func rowsWithHoles(s signal) float64 {
+	var sum int
+	var rowHoles uint64
+	last := s.board[s.summit+1]
+	for i := s.summit; i >= slab; i-- {
+		row := s.board[i]
+		rowHoles = ^row & (last | rowHoles)
+		if rowHoles != 0 {
+			sum++
+		}
+		last = row
+	}
+	return float64(sum)
+}

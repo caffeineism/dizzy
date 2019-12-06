@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 	"log"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -250,17 +249,8 @@ func makeColorBoard() colorBoard {
 			b[i][j] = black
 		}
 	}
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	strat := strategy{
-		weights:  []float64{-4, -10, -.1, -2},
-		features: []feature{landingHeight, coveredCells, filledCells, rowTransitions},
-	}
 	return colorBoard{
-		agent: agent{
-			signal:   signal{pos: defaultPos(r.Intn(numPieces)), summit: slab},
-			strategy: strat,
-			random:   r,
-		},
+		agent:     getTestAgent(),
 		cells:     b,
 		keyStamps: make(map[key.Code]time.Time),
 	}
