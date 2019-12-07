@@ -85,3 +85,7 @@ func (b board) clearLines(p pos, summit int) (board, int, int) {
 	}
 	return b, summit, lines
 }
+
+func (b board) isGameOver() bool {
+	return b[roof+1] != 0
+}

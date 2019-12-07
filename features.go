@@ -49,7 +49,6 @@ func rowTransitions(s signal) float64 {
 	// We will shift the row left once and surround it with filled wall bits.
 	// Then, we can xor this with the original that has two filled bits on the
 	// left border. What is left is a row with set bits in place of transitions.
-	// We take the popcount of that to get the total transitions.
 	for i := s.summit; i >= slab; i-- {
 		row := s.board[i]
 		sum += bits.OnesCount64(((row << 1) | walledRow) ^ (row | leftBorderRow))
@@ -82,6 +81,24 @@ func rowsWithHoles(s signal) float64 {
 			sum++
 		}
 		last = row
+	}
+	return float64(sum)
+}
+
+// wells3Deep counts the number of wells with at least one two empty cells
+// directly below it. A 3-deep well looks like this: [filled][empty][filled]
+//                                                  				 [empty]
+//                                                  				 [empty]
+// This feature was inspired by Dellacherie's original feature of cumulative
+// wells, which punishes deeper wells by their triangle number where n = depth.
+// I have found that cumulative wells tends to overpunish deeper wells and that
+// simply measuring 3-deep wells does the trick.
+func wells3Deep(s signal) float64 {
+	var sum int
+	for i := s.summit; i >= slab+2; i-- {
+		r := walledRow | s.board[i]<<1
+		wells := (r >> 1) & (r << 1) &^ r &^ (s.board[i-1] << 1) &^ (s.board[i-2] << 1)
+		sum += bits.OnesCount64(wells)
 	}
 	return float64(sum)
 }

@@ -127,15 +127,13 @@ func (p pos) instantDescend(delta int, b board) pos {
 // updateColHeights checks and updates the highest filled row for each column.
 // This method saves work by reducing the row index's upper bound.
 func updateColHeights(b board, colHeights [bWidth]int, p pos, lines int) [bWidth]int {
-	// Upper bound for column overlapped by piece is the topLandingHeight or
+	// Upper bound for column overlapped by piece is the topHeight or
 	// old colHeight, whichever is higher (old colHeight can be higher when
 	// softdropping and sliding piece underneath an overhang).
-	topLandingHeight := p.y + pieceRows - tableUpperEmptyRows[p.piece][p.form] - slab
+	topHeight := p.y + pieceRows - tableUpperEmptyRows[p.piece][p.form] - slab
 	for i := 0; i < formCols; i++ {
-		if depths[p.piece][p.form][i] != 0 {
-			if colHeights[bWidth-p.x+i] < topLandingHeight {
-				colHeights[bWidth-p.x+i] = topLandingHeight
-			}
+		if depths[p.piece][p.form][i] != 0 && colHeights[bWidth-p.x+i] < topHeight {
+			colHeights[bWidth-p.x+i] = topHeight
 		}
 	}
 	for col := 0; col < bWidth; col++ {
@@ -156,5 +154,6 @@ func (a agent) lockAndNewPiece() agent {
 	a.pos = defaultPos(a.random.Intn(numPieces))
 	a.totalLines += a.lines
 	a.totalPieces++
+	a.gameOver = a.isGameOver()
 	return a
 }

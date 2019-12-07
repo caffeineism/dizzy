@@ -1,13 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 )
 
 func main() {
-	initRender()
-	getTestAgent().run()
+	// initRender()
+	now := time.Now()
+	fmt.Println(getTestAgent().run(), "pieces")
+	fmt.Println(time.Since(now))
 }
 
 func getTestAgent() agent {
@@ -21,7 +24,7 @@ func getTestAgent() agent {
 
 func getTestStrategy() strategy {
 	return strategy{
-		weights:  []float64{-1.5, -.05, -2, -1, -8},
-		features: []feature{landingHeight, filledCells, rowTransitions, colTransitions, rowsWithHoles},
+		weights:  []float64{-1.5, -.05, -2, -1, -8, -10},
+		features: []feature{landingHeight, filledCells, rowTransitions, colTransitions, rowsWithHoles, wells3Deep},
 	}
 }

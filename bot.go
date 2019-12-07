@@ -2,17 +2,21 @@ package main
 
 import (
 	"math"
-	"time"
 )
 
-func (a agent) run() {
-	a.print()
+func (a agent) run() int {
+	// a.print()
 	for false == a.gameOver {
 		a.pos = a.findBestPlacement(a.findPlacements(a.piece, a.colHeights), a.signal)
-		a.print()
+		if a.pos == (pos{}) { // No placement found
+			a.gameOver = true
+			return a.totalPieces
+		}
+		// a.print()
 		a = a.lockAndNewPiece()
-		time.Sleep(500 * time.Millisecond)
+		// time.Sleep(1 * time.Millisecond)
 	}
+	return a.totalPieces
 }
 
 // findPlacements returns a slice of pos of placements that can be gotten to
@@ -46,6 +50,9 @@ func (strat strategy) findBestPlacement(placements []pos, sig signal) pos {
 	for _, p := range placements {
 		var score float64
 		candidate := sig.lock(p)
+		if candidate.isGameOver() {
+			continue
+		}
 		for i := 0; i < len(strat.features); i++ {
 			score += strat.weights[i] * strat.features[i](candidate)
 		}
