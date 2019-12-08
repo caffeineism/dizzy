@@ -19,8 +19,8 @@ type agent struct {
 type signal struct {
 	board
 	pos
-	colHeights                 [bWidth]int
-	summit, lines, filledCells int
+	colHeights    [bWidth]int
+	summit, lines int
 }
 
 // pos stores the type of piece as well as it's orientation and x, y
@@ -73,16 +73,6 @@ func (p pos) inBounds() bool {
 		}
 	}
 	return true
-}
-
-// lock merges the piece and updates important information
-func (s signal) lock(p pos) signal {
-	s.pos = p
-	s.board = s.merge(s.pos)
-	s.board, s.summit, s.lines = s.clearLines(s.pos, s.summit)
-	s.colHeights = updateColHeights(s.board, s.colHeights, s.pos, s.lines)
-	s.filledCells += pieceFilledCells - s.lines*bWidth
-	return s
 }
 
 func (p pos) move(delta int) pos {
@@ -147,6 +137,15 @@ func updateColHeights(b board, colHeights [bWidth]int, p pos, lines int) [bWidth
 		colHeights[col] = height
 	}
 	return colHeights
+}
+
+// lock merges the piece and updates important information
+func (s signal) lock(p pos) signal {
+	s.pos = p
+	s.board = s.merge(s.pos)
+	s.board, s.summit, s.lines = s.clearLines(s.pos, s.summit)
+	s.colHeights = updateColHeights(s.board, s.colHeights, s.pos, s.lines)
+	return s
 }
 
 func (a agent) lockAndNewPiece() agent {

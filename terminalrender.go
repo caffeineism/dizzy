@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 )
@@ -45,11 +43,11 @@ func insertDebugInfo(str string, s signal, strat strategy) string {
 	index += 3
 	var score float64
 	for i := 0; i < len(strat.features); i++ {
-		name := string(runtime.FuncForPC(reflect.ValueOf(strat.features[i]).Pointer()).Name())[5:]
-		value := strat.features[i](s.lock(s.pos))
-		weightedValue := strat.weights[i] * value
-		score += weightedValue
-		rows[i+index] = rows[i+index] + "\t" + fmt.Sprintf("%-9.1f", weightedValue) + " " + fmt.Sprintf("%2.0f", value) + " " + name
+		// name := string(runtime.FuncForPC(reflect.ValueOf(strat.features[i]).Pointer()).Name())[5:]
+		// value := strat.features[i](s.lock(s.pos))
+		// weightedValue := strat.weights[i] * value
+		// score += weightedValue
+		// rows[i+index] = rows[i+index] + "\t" + fmt.Sprintf("%-9.1f", weightedValue) + " " + fmt.Sprintf("%2.0f", value) + " " + name
 	}
 	rows[index-1] = rows[index-1] + fmt.Sprintf("\t%-12.1f score", score)
 	return strings.Join(rows, "\n") + "\n"

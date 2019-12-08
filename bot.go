@@ -5,16 +5,17 @@ import (
 )
 
 func (a agent) run() int {
-	// a.print()
+	placements := make([]pos, 0, bWidth*3)
 	for false == a.gameOver {
-		a.pos = a.findBestPlacement(a.findPlacements(a.piece, a.colHeights), a.signal)
+		placements = placements[:0] // Reuse slice to save allocation time
+		a.pos = a.findBestPlacement(a.findPlacements(a.piece, a.colHeights, placements), a.signal)
 		if a.pos == (pos{}) { // No placement found
 			a.gameOver = true
 			return a.totalPieces
 		}
 		// a.print()
 		a = a.lockAndNewPiece()
-		// time.Sleep(1 * time.Millisecond)
+		// time.Sleep(500 * time.Millisecond)
 	}
 	return a.totalPieces
 }
@@ -22,8 +23,7 @@ func (a agent) run() int {
 // findPlacements returns a slice of pos of placements that can be gotten to
 // without softdropping and sliding or rotating under overhangs. This method
 // uses simple height subtraction in order to avoid need for collision checks.
-func (b board) findPlacements(piece int, colHeights [bWidth]int) []pos {
-	var placements []pos
+func (b board) findPlacements(piece int, colHeights [bWidth]int, placements []pos) []pos {
 	for form := 0; form < tableUsedForms[piece]; form++ {
 		for x := tableXStart[piece][form]; x <= tableXStop[piece][form]; x++ {
 			var landingRow int
@@ -47,9 +47,9 @@ func (b board) findPlacements(piece int, colHeights [bWidth]int) []pos {
 func (strat strategy) findBestPlacement(placements []pos, sig signal) pos {
 	bestScore := math.Inf(-1)
 	var bestPlacement pos
-	for _, p := range placements {
+	for i := 0; i < len(placements); i++ {
 		var score float64
-		candidate := sig.lock(p)
+		candidate := sig.lock(placements[i])
 		if candidate.isGameOver() {
 			continue
 		}
@@ -58,7 +58,7 @@ func (strat strategy) findBestPlacement(placements []pos, sig signal) pos {
 		}
 		if score > bestScore {
 			bestScore = score
-			bestPlacement = p
+			bestPlacement = placements[i]
 		}
 	}
 	return bestPlacement

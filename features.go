@@ -22,15 +22,19 @@ func landingHeight(s signal) float64 {
 // C. Fahey: buried holes = coveredCells - filled cells.
 func coveredCells(s signal) float64 {
 	var sum int
-	for _, c := range s.colHeights {
-		sum += c
+	for i := 0; i < len(s.colHeights); i++ {
+		sum += s.colHeights[i]
 	}
 	return float64(sum)
 }
 
 // filledCells is analogous to cleared lines.
 func filledCells(s signal) float64 {
-	return float64(s.filledCells)
+	var sum int
+	for i := s.summit; i >= slab; i-- {
+		sum += bits.OnesCount64(s.board[i])
+	}
+	return float64(sum)
 }
 
 const (

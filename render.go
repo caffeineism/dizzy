@@ -250,7 +250,7 @@ func makeColorBoard() colorBoard {
 		}
 	}
 	return colorBoard{
-		agent:     getTestAgent(),
+		agent:     getTestAgent(0),
 		cells:     b,
 		keyStamps: make(map[key.Code]time.Time),
 	}
