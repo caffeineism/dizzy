@@ -21,10 +21,10 @@ func (a agent) print() {
 		sb.WriteString(row + "\n")
 	}
 	pieceInserted := insertPieceInStr(sb.String(), a.pos)
-	debugInserted := insertDebugInfo(pieceInserted, a.signal, a.strategy)
+	// debugInserted := insertDebugInfo(pieceInserted, a.signal, a.strategy)
 	sb.Reset()
 	sb.WriteString(" " + strings.Repeat("__", bWidth) + "\n") // Top border
-	sb.WriteString(debugInserted)
+	sb.WriteString(pieceInserted)
 	sb.WriteString(" " + strings.Repeat("‾‾", bWidth) + "\n ") // Bottom border
 	for i := 0; i < bWidth; i++ {
 		sb.WriteString(strconv.Itoa(i+1) + " ") // Column labels
@@ -42,13 +42,13 @@ func insertDebugInfo(str string, s signal, strat strategy) string {
 	rows[index] = rows[index] + fmt.Sprintf("\t%vy %vx", s.y, s.x) // X, Y coordinate
 	index += 3
 	var score float64
-	for i := 0; i < len(strat.features); i++ {
-		// name := string(runtime.FuncForPC(reflect.ValueOf(strat.features[i]).Pointer()).Name())[5:]
-		// value := strat.features[i](s.lock(s.pos))
-		// weightedValue := strat.weights[i] * value
-		// score += weightedValue
-		// rows[i+index] = rows[i+index] + "\t" + fmt.Sprintf("%-9.1f", weightedValue) + " " + fmt.Sprintf("%2.0f", value) + " " + name
-	}
+	// for i := 0; i < len(strat.features); i++ {
+	// name := string(runtime.FuncForPC(reflect.ValueOf(strat.features[i]).Pointer()).Name())[5:]
+	// value := strat.features[i](s.lock(s.pos))
+	// weightedValue := strat.weights[i] * value
+	// score += weightedValue
+	// rows[i+index] = rows[i+index] + "\t" + fmt.Sprintf("%-9.1f", weightedValue) + " " + fmt.Sprintf("%2.0f", value) + " " + name
+	// }
 	rows[index-1] = rows[index-1] + fmt.Sprintf("\t%-12.1f score", score)
 	return strings.Join(rows, "\n") + "\n"
 }

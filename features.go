@@ -4,13 +4,6 @@ import (
 	"math/bits"
 )
 
-type feature func(s signal) float64
-
-type strategy struct {
-	features []feature
-	weights  []float64
-}
-
 // landingHeight finds the row where the landing piece's top row overlaps.
 // Simplified from Dellacherie's feature, which uses (top+bottom)/2.
 func landingHeight(s signal) float64 {
@@ -36,11 +29,6 @@ func filledCells(s signal) float64 {
 	}
 	return float64(sum)
 }
-
-const (
-	walledRow     = uint64(1<<(bWidth+1) | 1) // 100000000001
-	leftBorderRow = uint64(3 << bWidth)       // 110000000000
-)
 
 // rowTransitions counts how many times a filled cell neighbors an empty cell to
 // its left or right. The left and right wall count as filled cells.

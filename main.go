@@ -12,7 +12,7 @@ import (
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
-// 57.0507935s 7775038 136282.731983386
+// 42.1695072s 7775038 184375.83259213425
 
 func main() {
 	flag.Parse()
@@ -38,17 +38,9 @@ func main() {
 
 func getTestAgent(seed int64) agent {
 	r := rand.New(rand.NewSource(seed))
-	// r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	return agent{
 		signal:   signal{pos: defaultPos(r.Intn(numPieces)), summit: slab},
-		strategy: getTestStrategy(),
+		strategy: []float64{-1.5, -.05, -2, -1, -8, -10},
 		random:   r,
-	}
-}
-
-func getTestStrategy() strategy {
-	return strategy{
-		weights:  []float64{-1.5, -.05, -2, -1, -8, -10},
-		features: []feature{landingHeight, filledCells, rowTransitions, colTransitions, rowsWithHoles, wells3Deep},
 	}
 }

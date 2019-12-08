@@ -8,7 +8,7 @@ import (
 // agent stores all of the player's information.
 type agent struct {
 	signal
-	strategy
+	strategy                []float64
 	random                  *rand.Rand
 	gameOver                bool
 	totalLines, totalPieces int
