@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/bits"
 	"strconv"
 	"strings"
 )
@@ -21,36 +22,166 @@ func (a agent) print() {
 		sb.WriteString(row + "\n")
 	}
 	pieceInserted := insertPieceInStr(sb.String(), a.pos)
-	// debugInserted := insertDebugInfo(pieceInserted, a.signal, a.strategy)
+	debugInserted := insertDebugInfo(pieceInserted, a.signal)
 	sb.Reset()
 	sb.WriteString(" " + strings.Repeat("__", bWidth) + "\n") // Top border
-	sb.WriteString(pieceInserted)
+	sb.WriteString(debugInserted)
 	sb.WriteString(" " + strings.Repeat("‾‾", bWidth) + "\n ") // Bottom border
 	for i := 0; i < bWidth; i++ {
 		sb.WriteString(strconv.Itoa(i+1) + " ") // Column labels
 	}
+	// fmt.Println()
+	// for i := 0; i < len(a.heightDiffs); i++ {
+	// 	fmt.Printf(" %v", a.heightDiffs[len(a.heightDiffs)-i-1])
+	// }
+	// fmt.Println()
 	fmt.Printf(sb.String() + "\n")
 }
 
-func insertDebugInfo(str string, s signal, strat strategy) string {
+func insertDebugInfo(str string, s signal) string {
 	rows := strings.Split(str, "\n")
 	rows = rows[:len(rows)-1]
 	for i := 0; i < len(rows); i++ {
 		rows[i] = rows[i] + " " + strconv.Itoa(roof-i) // Row label
 	}
 	var index int
-	rows[index] = rows[index] + fmt.Sprintf("\t%vy %vx", s.y, s.x) // X, Y coordinate
-	index += 3
-	var score float64
-	// for i := 0; i < len(strat.features); i++ {
-	// name := string(runtime.FuncForPC(reflect.ValueOf(strat.features[i]).Pointer()).Name())[5:]
-	// value := strat.features[i](s.lock(s.pos))
-	// weightedValue := strat.weights[i] * value
-	// score += weightedValue
-	// rows[i+index] = rows[i+index] + "\t" + fmt.Sprintf("%-9.1f", weightedValue) + " " + fmt.Sprintf("%2.0f", value) + " " + name
-	// }
-	rows[index-1] = rows[index-1] + fmt.Sprintf("\t%-12.1f score", score)
+	c := s.lock(s.pos)
+	rows[index] = rows[index] + fmt.Sprintf("\t%2dy %2dx, %d pieces, %d lines",
+		s.y, s.x, c.totalPieces, c.totalLines)
+	weightedRows := float64(c.totalLines*(c.totalLines+1)) / 2
+	for i := c.summit; i >= slab; i-- {
+		filled := float64(bits.OnesCount64(c.board[i]))
+		weightedRows += filled / float64(bWidth) * float64(c.totalLines+i-slab+1)
+	}
+	factor := float64(c.totalPieces*pieceFilledCells) / float64(bWidth)
+	factor = factor * (factor + 1) / 2
+	weightedRows -= factor
+	index += 2
+	rows[index] = rows[index] + fmt.Sprintf("\t%2.2f weighted rows", weightedRows)
+
+	var rowTransitions int
+	// Empty rows always contain two transitions (where the walls neighbor the
+	// open playfield).
+	rowTransitions += 2 * (roof - c.summit)
+	// We will shift the row left once and surround it with filled wall bits.
+	// Then, we can xor this with the original that has two filled bits on the
+	// left border. What is left is a row with set bits in place of transitions.
+	for i := c.summit; i >= slab; i-- {
+		row := c.board[i]
+		rowTransitions += bits.OnesCount64(((row << 1) | walledRow) ^ (row | leftBorderRow))
+	}
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d row transitions", rowTransitions)
+
+	var colTransitions int
+	for i := c.summit; i >= slab; i-- {
+		// xor neighboring rows. Set bits are where transitions occurred.
+		colTransitions += bits.OnesCount64(c.board[i+1] ^ c.board[i])
+	}
+	colTransitions += bits.OnesCount64(c.board[slab] ^ filledRow) // Bottom row and floor
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d col transitions", colTransitions)
+
+	var rowsWithHoles int
+	var rowHoles uint64
+	last := c.board[c.summit+1]
+	for i := c.summit; i >= slab; i-- {
+		row := c.board[i]
+		rowHoles = ^row & (last | rowHoles)
+		if rowHoles != 0 {
+			rowsWithHoles++
+		}
+		last = row
+	}
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d rows with holes", rowsWithHoles)
+
+	var wells3Deep, wells2Deep int
+	for i := c.summit; i >= slab+1; i-- {
+		r := walledRow | c.board[i]<<1
+		wells := (r >> 1) & (r << 1) &^ r &^ (c.board[i-1] << 1)
+		wells2Deep += bits.OnesCount64(wells)
+		if i >= slab+2 {
+			wells3Deep += bits.OnesCount64(wells &^ (c.board[i-2] << 1))
+		}
+	}
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d wells 2-Deep", wells2Deep)
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d wells 3-Deep", wells3Deep)
+
+	var quota int
+	var visitedMap uint64
+	for i := c.summit; i >= slab; i-- {
+		// Does this row have at least one hole?
+		holesOnRow := c.board[i+1] &^ c.board[i]
+		if holesOnRow != 0 {
+			for j := 0; j < bWidth; j++ {
+				// Is there a hole on th is column?
+				if holesOnRow>>j&1 != 0 {
+					depth := 1
+					// While row directly above hole is filled
+					for c.board[i+depth]>>j&1 != 0 {
+						if visitedMap>>uint64(i+depth)&1 == 0 { // If row not seen yet
+							quota++ // Always punish at least one empty
+							empties := bWidth - bits.OnesCount64(c.board[i+depth])
+							discount := depth - 1
+							if empties > discount {
+								quota += empties - discount
+							}
+							visitedMap |= (1 << uint64(i+depth))
+						}
+						depth++
+					}
+				}
+			}
+		}
+	}
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d hole quota", quota)
+
+	var heightDiffs [bWidth - 1]int
+	for i := 0; i < len(heightDiffs); i++ {
+		heightDiffs[i] = c.colHeights[i] - c.colHeights[i+1]
+	}
+	var stableSurface int
+	var oMap, sMap, zMap uint
+	for i := 0; i < len(c.colHeights)-1; i++ {
+		switch c.colHeights[i] - c.colHeights[i+1] {
+		case 0:
+			oMap |= 1 << i
+		case 1:
+			zMap |= 1 << i
+		case -1:
+			sMap |= 1 << i
+		}
+	}
+	width := uint(3)
+stableLoop:
+	for i, oMask := 0, width; oMask < width<<len(c.colHeights)-1; i, oMask = i+1, oMask<<1 {
+		if 1<<i&oMap != 0 {
+			for j, zMask := 0, width; zMask < width<<len(c.colHeights)-1; j, zMask = j+1, zMask<<1 {
+				if 1<<j&zMap != 0 {
+					for k, sMask := 0, width; sMask < width<<len(c.colHeights)-1; k, sMask = k+1, sMask<<1 {
+						if 1<<k&sMap != 0 {
+							if oMask&zMask|oMask&sMask|zMask&sMask == 0 {
+								stableSurface = 1
+								break stableLoop
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d stable surface", stableSurface)
+
 	return strings.Join(rows, "\n") + "\n"
+}
+
+func noSZOOverlap(a, b, c int) bool {
+	return a&b|a&c|b&c == 0
 }
 
 func insertPieceInStr(str string, p pos) string {

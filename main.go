@@ -10,9 +10,12 @@ import (
 	"time"
 )
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var (
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	botGo      = flag.Int("b", -1, "run bot with speed in ms. 0 plays without rendering.")
+)
 
-// 42.1695072s 7775038 184375.83259213425
+// 6.3934767s 900343 140822.1289052324
 
 func main() {
 	flag.Parse()
@@ -24,23 +27,27 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 	}
-	// initRender()
-	var totalPieces int
-	now := time.Now()
-	for i := 0; i < 1; i++ {
-		p := getTestAgent(int64(i)).run()
-		fmt.Println(p, "pieces")
-		totalPieces += p
+	if *botGo >= 0 {
+		var totalPieces int
+		now := time.Now()
+		for i := 0; i < 1; i++ {
+			p := getTestAgent(int64(i), *botGo).run()
+			fmt.Println(p, "pieces")
+			totalPieces += p
+		}
+		elapsed := time.Since(now)
+		fmt.Println(elapsed, totalPieces, float64(totalPieces)/elapsed.Seconds())
+	} else {
+		initRender()
 	}
-	elapsed := time.Since(now)
-	fmt.Println(elapsed, totalPieces, float64(totalPieces)/elapsed.Seconds())
 }
 
-func getTestAgent(seed int64) agent {
+func getTestAgent(seed int64, speed int) agent {
 	r := rand.New(rand.NewSource(seed))
 	return agent{
 		signal:   signal{pos: defaultPos(r.Intn(numPieces)), summit: slab},
-		strategy: []float64{-1.5, -.05, -2, -1, -8, -10},
+		strategy: []float64{-4, -1, -1, -7, -0.5, -3, -0.1, 3},
 		random:   r,
+		speed:    speed,
 	}
 }

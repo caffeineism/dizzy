@@ -8,10 +8,10 @@ import (
 // agent stores all of the player's information.
 type agent struct {
 	signal
-	strategy                []float64
-	random                  *rand.Rand
-	gameOver                bool
-	totalLines, totalPieces int
+	strategy []float64
+	random   *rand.Rand
+	gameOver bool
+	speed    int
 }
 
 // signal stores things to be considered for evaluation. The variable summit is
@@ -19,8 +19,10 @@ type agent struct {
 type signal struct {
 	board
 	pos
-	colHeights    [bWidth]int
-	summit, lines int
+	colHeights [bWidth]int
+	// heightDiffs                            [bWidth - 1]int
+	summit, lines, totalLines, totalPieces int
+	gameOver                               bool
 }
 
 // pos stores the type of piece as well as it's orientation and x, y
@@ -139,20 +141,29 @@ func updateColHeights(b board, colHeights [bWidth]int, p pos, lines int) [bWidth
 	return colHeights
 }
 
+func updateHeightDiffs(colHeights [bWidth]int) [bWidth - 1]int {
+	var heightDiffs [bWidth - 1]int
+	for i := 0; i < len(heightDiffs); i++ {
+		heightDiffs[i] = colHeights[i] - colHeights[i+1]
+	}
+	return heightDiffs
+}
+
 // lock merges the piece and updates important information
 func (s signal) lock(p pos) signal {
 	s.pos = p
 	s.board = s.merge(s.pos)
 	s.board, s.summit, s.lines = s.clearLines(s.pos, s.summit)
 	s.colHeights = updateColHeights(s.board, s.colHeights, s.pos, s.lines)
+	// s.heightDiffs = updateHeightDiffs(s.colHeights)
+	s.totalLines += s.lines
+	s.totalPieces++
+	s.gameOver = s.isGameOver()
 	return s
 }
 
 func (a agent) lockAndNewPiece() agent {
 	a.signal = a.lock(a.pos)
 	a.pos = defaultPos(a.random.Intn(numPieces))
-	a.totalLines += a.lines
-	a.totalPieces++
-	a.gameOver = a.isGameOver()
 	return a
 }
