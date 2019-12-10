@@ -144,29 +144,29 @@ func insertDebugInfo(str string, s signal) string {
 	for i := 0; i < len(heightDiffs); i++ {
 		heightDiffs[i] = c.colHeights[i] - c.colHeights[i+1]
 	}
-	var stableSurface int
-	var oMap, sMap, zMap uint
+	var stableSurfaceOLD int
+	var oMapOLD, sMapOLD, zMapOLD uint
 	for i := 0; i < len(c.colHeights)-1; i++ {
 		switch c.colHeights[i] - c.colHeights[i+1] {
 		case 0:
-			oMap |= 1 << i
+			oMapOLD |= 1 << i
 		case 1:
-			zMap |= 1 << i
+			zMapOLD |= 1 << i
 		case -1:
-			sMap |= 1 << i
+			sMapOLD |= 1 << i
 		}
 	}
 	width := uint(3)
-stableLoop:
+stableLoopOLD:
 	for i, oMask := 0, width; oMask < width<<len(c.colHeights)-1; i, oMask = i+1, oMask<<1 {
-		if 1<<i&oMap != 0 {
+		if 1<<i&oMapOLD != 0 {
 			for j, zMask := 0, width; zMask < width<<len(c.colHeights)-1; j, zMask = j+1, zMask<<1 {
-				if 1<<j&zMap != 0 {
+				if 1<<j&zMapOLD != 0 {
 					for k, sMask := 0, width; sMask < width<<len(c.colHeights)-1; k, sMask = k+1, sMask<<1 {
-						if 1<<k&sMap != 0 {
+						if 1<<k&sMapOLD != 0 {
 							if oMask&zMask|oMask&sMask|zMask&sMask == 0 {
-								stableSurface = 1
-								break stableLoop
+								stableSurfaceOLD = 1
+								break stableLoopOLD
 							}
 						}
 					}
@@ -175,13 +175,31 @@ stableLoop:
 		}
 	}
 	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d stable surface old", stableSurfaceOLD)
+
+	var stableSurface int
+	var oMap, sMap, zMap uint
+	for i := 0; i < len(c.colHeights)-1; i++ {
+		switch c.colHeights[i] - c.colHeights[i+1] {
+		case 0:
+			oMap |= 1 << (i + 1)
+		case 1:
+			zMap |= 1 << (i + 1)
+		case -1:
+			sMap |= 1 << (i + 1)
+		}
+	}
+	if oMap != 0 && zMap != 0 && sMap != 0 {
+		if (zMap<<1&^sMap == 0 && bits.OnesCount(sMap>>1&^zMap|sMap<<1&^zMap) > 2) ||
+			(sMap<<1&^zMap == 0 && bits.OnesCount(zMap>>1&^sMap|zMap<<1&^sMap) > 2) ||
+			(zMap<<1&^sMap != 0 && sMap<<1&^zMap != 0) ||
+			(bits.OnesCount(zMap) > 1 && bits.OnesCount(sMap) > 1) {
+			stableSurface = 1
+		}
+	}
+	index++
 	rows[index] = rows[index] + fmt.Sprintf("\t%4d stable surface", stableSurface)
-
 	return strings.Join(rows, "\n") + "\n"
-}
-
-func noSZOOverlap(a, b, c int) bool {
-	return a&b|a&c|b&c == 0
 }
 
 func insertPieceInStr(str string, p pos) string {
