@@ -19,8 +19,7 @@ type agent struct {
 type signal struct {
 	board
 	pos
-	colHeights [bWidth]int
-	// heightDiffs                            [bWidth - 1]int
+	colHeights                             [bWidth]int
 	summit, lines, totalLines, totalPieces int
 	gameOver                               bool
 }
@@ -141,21 +140,12 @@ func updateColHeights(b board, colHeights [bWidth]int, p pos, lines int) [bWidth
 	return colHeights
 }
 
-func updateHeightDiffs(colHeights [bWidth]int) [bWidth - 1]int {
-	var heightDiffs [bWidth - 1]int
-	for i := 0; i < len(heightDiffs); i++ {
-		heightDiffs[i] = colHeights[i] - colHeights[i+1]
-	}
-	return heightDiffs
-}
-
 // lock merges the piece and updates important information
 func (s signal) lock(p pos) signal {
 	s.pos = p
 	s.board = s.merge(s.pos)
 	s.board, s.summit, s.lines = s.clearLines(s.pos, s.summit)
 	s.colHeights = updateColHeights(s.board, s.colHeights, s.pos, s.lines)
-	// s.heightDiffs = updateHeightDiffs(s.colHeights)
 	s.totalLines += s.lines
 	s.totalPieces++
 	s.gameOver = s.isGameOver()

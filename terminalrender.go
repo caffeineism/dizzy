@@ -30,11 +30,6 @@ func (a agent) print() {
 	for i := 0; i < bWidth; i++ {
 		sb.WriteString(strconv.Itoa(i+1) + " ") // Column labels
 	}
-	// fmt.Println()
-	// for i := 0; i < len(a.heightDiffs); i++ {
-	// 	fmt.Printf(" %v", a.heightDiffs[len(a.heightDiffs)-i-1])
-	// }
-	// fmt.Println()
 	fmt.Printf(sb.String() + "\n")
 }
 
@@ -48,6 +43,12 @@ func insertDebugInfo(str string, s signal) string {
 	c := s.lock(s.pos)
 	rows[index] = rows[index] + fmt.Sprintf("\t%2dy %2dx, %d pieces, %d lines",
 		s.y, s.x, c.totalPieces, c.totalLines)
+
+	var heightDiffs [bWidth - 1]int
+	for i := 0; i < len(c.colHeights)-1; i++ {
+		heightDiffs[i] = c.colHeights[i] - c.colHeights[i+1]
+	}
+
 	weightedRows := float64(c.totalLines*(c.totalLines+1)) / 2
 	for i := c.summit; i >= slab; i-- {
 		filled := float64(bits.OnesCount64(c.board[i]))
@@ -140,65 +141,48 @@ func insertDebugInfo(str string, s signal) string {
 	index++
 	rows[index] = rows[index] + fmt.Sprintf("\t%4d hole quota", quota)
 
-	var heightDiffs [bWidth - 1]int
+	var safeSZ int
+	var sMap, zMap uint
 	for i := 0; i < len(heightDiffs); i++ {
-		heightDiffs[i] = c.colHeights[i] - c.colHeights[i+1]
-	}
-	var stableSurfaceOLD int
-	var oMapOLD, sMapOLD, zMapOLD uint
-	for i := 0; i < len(c.colHeights)-1; i++ {
-		switch c.colHeights[i] - c.colHeights[i+1] {
-		case 0:
-			oMapOLD |= 1 << i
-		case 1:
-			zMapOLD |= 1 << i
-		case -1:
-			sMapOLD |= 1 << i
-		}
-	}
-	width := uint(3)
-stableLoopOLD:
-	for i, oMask := 0, width; oMask < width<<len(c.colHeights)-1; i, oMask = i+1, oMask<<1 {
-		if 1<<i&oMapOLD != 0 {
-			for j, zMask := 0, width; zMask < width<<len(c.colHeights)-1; j, zMask = j+1, zMask<<1 {
-				if 1<<j&zMapOLD != 0 {
-					for k, sMask := 0, width; sMask < width<<len(c.colHeights)-1; k, sMask = k+1, sMask<<1 {
-						if 1<<k&sMapOLD != 0 {
-							if oMask&zMask|oMask&sMask|zMask&sMask == 0 {
-								stableSurfaceOLD = 1
-								break stableLoopOLD
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d stable surface old", stableSurfaceOLD)
-
-	var stableSurface int
-	var oMap, sMap, zMap uint
-	for i := 0; i < len(c.colHeights)-1; i++ {
-		switch c.colHeights[i] - c.colHeights[i+1] {
-		case 0:
-			oMap |= 1 << (i + 1)
+		switch heightDiffs[i] {
 		case 1:
 			zMap |= 1 << (i + 1)
 		case -1:
 			sMap |= 1 << (i + 1)
 		}
 	}
-	if oMap != 0 && zMap != 0 && sMap != 0 {
+	if zMap != 0 && sMap != 0 {
 		if (zMap<<1&^sMap == 0 && bits.OnesCount(sMap>>1&^zMap|sMap<<1&^zMap) > 2) ||
 			(sMap<<1&^zMap == 0 && bits.OnesCount(zMap>>1&^sMap|zMap<<1&^sMap) > 2) ||
 			(zMap<<1&^sMap != 0 && sMap<<1&^zMap != 0) ||
 			(bits.OnesCount(zMap) > 1 && bits.OnesCount(sMap) > 1) {
-			stableSurface = 1
+			safeSZ = 1
 		}
 	}
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d stable surface", stableSurface)
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d safeSZ", safeSZ)
+
+	var wellTraps int
+	// Wall cases
+	if heightDiffs[0] < 0 && heightDiffs[1] == 1 {
+		wellTraps++
+	}
+	if heightDiffs[len(heightDiffs)-1] > 0 && heightDiffs[len(heightDiffs)-2] == -1 {
+		wellTraps++
+	}
+	for i := 0; i < len(heightDiffs)-2; i++ {
+		if heightDiffs[i] > -heightDiffs[i+1]+1 && heightDiffs[i+1] < 0 &&
+			heightDiffs[i+2] == 1 {
+			wellTraps++
+		}
+		if heightDiffs[i] == -1 && heightDiffs[i+1] > 0 &&
+			heightDiffs[i+2] < -heightDiffs[i+1]-1 {
+			wellTraps++
+		}
+	}
+	index++
+	rows[index] = rows[index] + fmt.Sprintf("\t%4d well traps", wellTraps)
+
 	return strings.Join(rows, "\n") + "\n"
 }
 

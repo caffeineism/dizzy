@@ -46,7 +46,7 @@ func getTestAgent(seed int64, speed int) agent {
 	r := rand.New(rand.NewSource(seed))
 	return agent{
 		signal:   signal{pos: defaultPos(r.Intn(numPieces)), summit: slab},
-		strategy: []float64{-4, -1, -1, -7, -0.5, -3, -0.1, 3},
+		strategy: []float64{-4, -1, -1, -10, -0.25, -5, -0.1, 1.5, -1},
 		random:   r,
 		speed:    speed,
 	}

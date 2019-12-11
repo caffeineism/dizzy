@@ -67,6 +67,11 @@ func findBestPlacement(sig signal, strat []float64, placements []pos) pos {
 			continue
 		}
 
+		var heightDiffs [bWidth - 1]int
+		for i := 0; i < len(c.colHeights)-1; i++ {
+			heightDiffs[i] = c.colHeights[i] - c.colHeights[i+1]
+		}
+
 		// ********** START FEATURES ***********************************************
 		// I originally had these neatly encapsulated as individual functions,
 		// allowing findBestPlacement to cleanly iterate over them. Unfortunately,
@@ -132,12 +137,13 @@ func findBestPlacement(sig signal, strat []float64, placements []pos) pos {
 		score += strat[3] * float64(rowsWithHoles)
 
 		// wells2Deep counts the number of wells with at least one empty cell
-		// directly below it. A 2-deep well looks like this: [filled][empty][filled]
-		//                                                  				 [empty]
-		// This feature was inspired by Dellacherie's original feature of cumulative
-		// wells, which punishes deeper wells by their triangle number where n =
-		// depth. I have found that cumulative wells tends to overpunish deeper
-		// wells and that simply measuing this way will do the trick.
+		// directly below it. A 2-deep well looks like this:
+		// [filled][empty][filled]
+		//         [empty]
+		// This feature was inspired by Dellacherie's original feature named
+		// cumulative wells, which punishes deeper wells by their triangle number
+		// where n = depth. I have found that cumulative wells tends to overpunish
+		// deeper wells. Counting only 2-deep and 3-deep wells seem to do the trick.
 		var wells3Deep, wells2Deep int
 		for i := c.summit; i >= slab+1; i-- {
 			r := walledRow | c.board[i]<<1
@@ -150,19 +156,19 @@ func findBestPlacement(sig signal, strat []float64, placements []pos) pos {
 		score += strat[4] * float64(wells2Deep)
 		score += strat[5] * float64(wells3Deep)
 
-		// holeQuota helps the bot see how "bad" its holes are, allowing it to make
-		// intelligent downstacking decisions. The two main principles are:
+		// holeQuota helps the bot see how "bad" its holes are, helping it to make
+		// better downstacking decisions. The two main ideas are:
 		// * The number of pieces required to uncover a hole is a function of how
 		//   many empty cells are on the rows above that cover it.
 		// * Stacking over higher up holes is more damaging than stacking over ones
 		//   near the bottom. When we stack over a hole near the bottom, we may
 		//   actually clear this anyway through the course of normal play before
-		//   even having time to clear the bottom hole.
+		//   having enough pieces to get to the hole.
 		//
-		// As a result of these observations, holeQuota adds up empty cells on the
-		// rows that directly cover a hole. It also discounts these by how far away
-		// from the hole they are. If a row's empties have already been counted,
-		// it will skip to the next to avoid double counting.
+		// holeQuota adds up empty cells on rows directly covering a hole. It
+		// gives a discount for how many rows away from the hole they are. If a
+		// row's empty cells have already been counted, skips them to avoid
+		// double-counting.
 		var quota int
 		var visitedMap uint64
 		for i := c.summit; i >= slab; i-- {
@@ -192,33 +198,54 @@ func findBestPlacement(sig signal, strat []float64, placements []pos) pos {
 		}
 		score += strat[6] * float64(quota)
 
-		// stableSurface asks "if we received S, Z, and O all simultaneously, could
-		// we fit fit them without creating a hole and without overlapping one
-		// other?" Horizontal S and Z placements are ignored. The intuition behind
-		// this is that if S, Z, and O all fit at once, then the board is resilient
-		// against floods of these pieces. The shapes self-perpetuate, always
-		// allowing future S, Z, and O's so long as the board height permits.
-		var stableSurface int
-		var oMap, sMap, zMap uint
-		for i := 0; i < len(c.colHeights)-1; i++ {
-			switch c.colHeights[i] - c.colHeights[i+1] {
-			case 0:
-				oMap |= 1 << (i + 1)
+		// safeSZ asks "if we received both S and Z simultaneously, could
+		// we place them both without creating a hole and without overlapping one
+		// another?" Horizontal S and Z placements are ignored. This means that the
+		// surface is resilent against floods of S and Z, since the shapes
+		// self-perpetuate and allow future S and Zs as long as the board's height
+		// permits.
+		var safeSZ int
+		var sMap, zMap uint
+		for i := 0; i < len(heightDiffs); i++ {
+			switch heightDiffs[i] {
 			case 1:
 				zMap |= 1 << (i + 1)
 			case -1:
 				sMap |= 1 << (i + 1)
 			}
 		}
-		if oMap != 0 && zMap != 0 && sMap != 0 {
+		if zMap != 0 && sMap != 0 {
 			if (zMap<<1&^sMap == 0 && bits.OnesCount(sMap>>1&^zMap|sMap<<1&^zMap) > 2) ||
 				(sMap<<1&^zMap == 0 && bits.OnesCount(zMap>>1&^sMap|zMap<<1&^sMap) > 2) ||
 				(zMap<<1&^sMap != 0 && sMap<<1&^zMap != 0) ||
 				(bits.OnesCount(zMap) > 1 && bits.OnesCount(sMap) > 1) {
-				stableSurface = 1
+				safeSZ = 1
 			}
 		}
-		score += strat[7] * float64(stableSurface)
+		score += strat[7] * float64(safeSZ)
+
+		// wellTraps counts the number of 0103 surface patterns. While these
+		// patterns allow placements for S and Z, they make a 3-deep well in doing
+		// so.
+		var wellTraps int
+		// Wall cases
+		if heightDiffs[0] < 0 && heightDiffs[1] == 1 {
+			wellTraps++
+		}
+		if heightDiffs[len(heightDiffs)-1] > 0 && heightDiffs[len(heightDiffs)-2] == -1 {
+			wellTraps++
+		}
+		for i := 0; i < len(heightDiffs)-2; i++ {
+			if heightDiffs[i] > -heightDiffs[i+1]+1 && heightDiffs[i+1] < 0 &&
+				heightDiffs[i+2] == 1 {
+				wellTraps++
+			}
+			if heightDiffs[i] == -1 && heightDiffs[i+1] > 0 &&
+				heightDiffs[i+2] < -heightDiffs[i+1]-1 {
+				wellTraps++
+			}
+		}
+		score += strat[8] * float64(wellTraps)
 
 		// ********** END FEATURES *************************************************
 
