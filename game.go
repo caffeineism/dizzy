@@ -8,7 +8,7 @@ import (
 // agent stores all of the player's information.
 type agent struct {
 	signal
-	strategy []float64
+	strategy
 	random   *rand.Rand
 	gameOver bool
 	speed    int
@@ -23,6 +23,8 @@ type signal struct {
 	summit, lines, totalLines, totalPieces int
 	gameOver                               bool
 }
+
+type strategy []float64
 
 // pos stores the type of piece as well as it's orientation and x, y
 // coordinates.
@@ -156,4 +158,13 @@ func (a agent) lockAndNewPiece() agent {
 	a.signal = a.lock(a.pos)
 	a.pos = defaultPos(a.random.Intn(numPieces))
 	return a
+}
+func makeAgent(strat strategy, seed int64, speed int) agent {
+	r := rand.New(rand.NewSource(seed))
+	return agent{
+		signal:   signal{pos: defaultPos(r.Intn(numPieces)), summit: slab},
+		strategy: strat,
+		random:   r,
+		speed:    speed,
+	}
 }

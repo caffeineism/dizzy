@@ -41,7 +41,7 @@ func insertDebugInfo(str string, s signal) string {
 	}
 	var index int
 	c := s.lock(s.pos)
-	rows[index] = rows[index] + fmt.Sprintf("\t%2dy %2dx, %d pieces, %d lines",
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%2dy %2dx, %d pieces, %d lines",
 		s.y, s.x, c.totalPieces, c.totalLines)
 
 	var heightDiffs [bWidth - 1]int
@@ -58,7 +58,7 @@ func insertDebugInfo(str string, s signal) string {
 	factor = factor * (factor + 1) / 2
 	weightedRows -= factor
 	index += 2
-	rows[index] = rows[index] + fmt.Sprintf("\t%2.2f weighted rows", weightedRows)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%2.2f weighted rows", weightedRows)
 
 	var rowTransitions int
 	// Empty rows always contain two transitions (where the walls neighbor the
@@ -72,7 +72,7 @@ func insertDebugInfo(str string, s signal) string {
 		rowTransitions += bits.OnesCount64(((row << 1) | walledRow) ^ (row | leftBorderRow))
 	}
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d row transitions", rowTransitions)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d row transitions", rowTransitions)
 
 	var colTransitions int
 	for i := c.summit; i >= slab; i-- {
@@ -81,7 +81,7 @@ func insertDebugInfo(str string, s signal) string {
 	}
 	colTransitions += bits.OnesCount64(c.board[slab] ^ filledRow) // Bottom row and floor
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d col transitions", colTransitions)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d col transitions", colTransitions)
 
 	var rowsWithHoles int
 	var rowHoles uint64
@@ -95,7 +95,7 @@ func insertDebugInfo(str string, s signal) string {
 		last = row
 	}
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d rows with holes", rowsWithHoles)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d rows with holes", rowsWithHoles)
 
 	var wells3Deep, wells2Deep int
 	for i := c.summit; i >= slab+1; i-- {
@@ -107,9 +107,9 @@ func insertDebugInfo(str string, s signal) string {
 		}
 	}
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d wells 2-Deep", wells2Deep)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d wells 2-Deep", wells2Deep)
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d wells 3-Deep", wells3Deep)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d wells 3-Deep", wells3Deep)
 
 	var quota int
 	var visitedMap uint64
@@ -139,7 +139,7 @@ func insertDebugInfo(str string, s signal) string {
 		}
 	}
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d hole quota", quota)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d hole quota", quota)
 
 	var safeSZ int
 	var sMap, zMap uint
@@ -160,7 +160,7 @@ func insertDebugInfo(str string, s signal) string {
 		}
 	}
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d safeSZ", safeSZ)
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d safeSZ", safeSZ)
 
 	var wellTraps int
 	// Wall cases
@@ -181,8 +181,7 @@ func insertDebugInfo(str string, s signal) string {
 		}
 	}
 	index++
-	rows[index] = rows[index] + fmt.Sprintf("\t%4d well traps", wellTraps)
-
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d well traps", wellTraps)
 	return strings.Join(rows, "\n") + "\n"
 }
 
@@ -239,4 +238,12 @@ func stringPiece(r uint64) string {
 		}
 	}
 	return sb.String()
+}
+
+func (s strategy) string() string {
+	var sb strings.Builder
+	for i := 0; i < len(s); i++ {
+		sb.WriteString(fmt.Sprintf("% 6.2f, ", s[i]))
+	}
+	return sb.String()[:len(sb.String())-2]
 }

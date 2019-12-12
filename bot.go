@@ -6,18 +6,14 @@ import (
 	"time"
 )
 
-type strategy struct {
-	weights []float64
-}
-
-func (a agent) run() int {
+func (a agent) run() (int, int) {
 	placements := make([]pos, 0, bWidth*3)
 	for false == a.gameOver {
 		placements = placements[:0] // Reuse slice to save allocation time
 		a.pos = findBestPlacement(a.signal, a.strategy, a.findPlacements(a.piece, a.colHeights, placements))
 		if a.pos == (pos{}) { // No placement found
 			a.gameOver = true
-			return a.totalPieces
+			return a.totalPieces, a.totalLines
 		}
 		if a.speed > 0 {
 			a.print()
@@ -25,7 +21,7 @@ func (a agent) run() int {
 		}
 		a = a.lockAndNewPiece()
 	}
-	return a.totalPieces
+	return a.totalPieces, a.totalLines
 }
 
 // findPlacements returns a slice of pos of placements that can be gotten to
@@ -57,7 +53,7 @@ const (
 	leftBorderRow = uint64(3 << bWidth)       // 110000000000
 )
 
-func findBestPlacement(sig signal, strat []float64, placements []pos) pos {
+func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 	bestScore := math.Inf(-1)
 	var bestPlacement pos
 	for i := 0; i < len(placements); i++ {
@@ -91,8 +87,7 @@ func findBestPlacement(sig signal, strat []float64, placements []pos) pos {
 			weightedRows += filled / float64(bWidth) * float64(c.totalLines+i-slab+1)
 		}
 		factor := float64(c.totalPieces*pieceFilledCells) / float64(bWidth)
-		factor = factor * (factor + 1) / 2
-		weightedRows -= factor
+		weightedRows -= factor * (factor + 1) / 2
 		score += strat[0] * float64(weightedRows)
 
 		// rowTransitions counts how many times a filled cell neighbors an empty cell to
