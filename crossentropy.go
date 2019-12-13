@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -23,19 +24,19 @@ import (
 //
 // 3) Noise decreases logarithmically with the number of iterations.
 type crossEntropy struct {
-	means, variances, bestStrat                strategy
-	population, iterations, cutoff, numOfGames int
-	rho, noise, bestResult, lambda             float64
+	means, variances, bestStratSingle, bestStratMean     strategy
+	population, iterations, cutoff, numOfGames           int
+	rho, noise, bestResultSingle, bestResultMean, lambda float64
 }
 
 func (s strategy) newCrossEntropy(numOfGames int) crossEntropy {
 	return crossEntropy{
 		means:      s,
-		variances:  initVariances(len(s), 100),
+		variances:  initVariances(len(s), 10),
 		population: 100,
-		noise:      0.05,
-		rho:        0.1,              // Top percent of population to consider
-		lambda:     1 / float64(1e2), // L1 regularization constant
+		noise:      0.02,
+		rho:        0.1,                    // Top percent of population to consider
+		lambda:     0.04 / float64(len(s)), // L1 regularization constant
 		numOfGames: numOfGames,
 	}
 }
@@ -118,39 +119,49 @@ func (ce *crossEntropy) getStrat() strategy {
 
 func (ce *crossEntropy) updateMeansAndVariances(results ceResultList) {
 	weights := make([][]float64, len(ce.means))
+	var meanLines float64
 	for i := 0; i < len(ce.means); i++ {
 		weights[i] = make([]float64, ce.cutoff)
 		for j := 0; j < ce.cutoff; j++ {
 			weights[i][j] = results[j].strategy[i]
 		}
+		meanLines += results[i].lines
 	}
+	meanLines /= float64(len(ce.means))
 	for i := 0; i < len(ce.means); i++ {
 		ce.means[i] = getMean(weights[i])
 		ce.variances[i] = getVariance(weights[i], ce.means[i])
+	}
+	if meanLines > ce.bestResultMean {
+		ce.bestResultMean = meanLines
+		ce.bestStratMean = ce.means
 	}
 }
 
 func (ce *crossEntropy) logData(results ceResultList) {
 	var sb strings.Builder
 	for i := 0; i < len(results); i++ {
-		if results[i].lines > ce.bestResult {
-			ce.bestResult = results[i].lines
-			ce.bestStrat = results[i].strategy
+		if results[i].lines > ce.bestResultSingle {
+			ce.bestResultSingle = results[i].lines
+			ce.bestStratSingle = results[i].strategy
 			stars := strings.Repeat("*", 30)
 			sb.WriteString(fmt.Sprintf(stars + " New Best " + stars + "\n"))
 		}
 	}
 	strFormat := "%12.0f : "
-	sb.WriteString(fmt.Sprintf(strFormat, ce.bestResult) + ce.bestStrat.string())
-	sb.WriteString("  (Current Best)\n\n")
+	sb.WriteString(fmt.Sprintf(strFormat, ce.bestResultMean) + ce.bestStratMean.string() + " Best average\n")
+	sb.WriteString(fmt.Sprintf(strFormat, ce.bestResultSingle) + ce.bestStratSingle.string() + " Best single\n\n")
 	for i := 0; i < ce.cutoff; i++ {
 		lines := results[i].lines
 		sb.WriteString(fmt.Sprintf(strFormat, lines))
 		sb.WriteString(results[i].strategy.string() + "\n")
 	}
 	t := time.Now().Format("2006-01-02 15:04:05")
-	sb.WriteString(fmt.Sprintf("\nIteration %d\t%s\n\n", ce.iterations, t))
-	fmt.Print(sb.String())
+	info := fmt.Sprintf("%d game(s) per trial\t %dx%d board", ce.numOfGames, bWidth, bHeight)
+	sb.WriteString(fmt.Sprintf("\nIteration %d\t%s\t%s\n\n", ce.iterations, t, info))
+	str := sb.String()
+	fmt.Print(str)
+	writeToFile(str, "ce.txt")
 }
 
 func initVariances(size int, variance float64) []float64 {
@@ -187,4 +198,15 @@ func getVariance(data []float64, mean float64) float64 {
 		squaredDiffs += diffs * diffs
 	}
 	return squaredDiffs / float64(len(data))
+}
+
+func writeToFile(str, file string) {
+	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE, 0600)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	if _, err = f.WriteString(str); err != nil {
+		panic(err)
+	}
 }

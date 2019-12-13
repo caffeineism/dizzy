@@ -49,27 +49,26 @@ func insertDebugInfo(str string, s signal) string {
 		heightDiffs[i] = c.colHeights[i] - c.colHeights[i+1]
 	}
 
-	weightedRows := float64(c.totalLines*(c.totalLines+1)) / 2
+	var weightedRows float64
+	psuedoLines := float64(c.totalLines) - float64(c.totalPieces*pieceFilledCells)/float64(bWidth)
 	for i := c.summit; i >= slab; i-- {
 		filled := float64(bits.OnesCount64(c.board[i]))
-		weightedRows += filled / float64(bWidth) * float64(c.totalLines+i-slab+1)
+		weightedRows += filled / float64(bWidth) * (float64(i-slab+1) + psuedoLines)
 	}
-	factor := float64(c.totalPieces*pieceFilledCells) / float64(bWidth)
-	factor = factor * (factor + 1) / 2
-	weightedRows -= factor
-	index += 2
+	weightedRows += psuedoLines * (psuedoLines + 1) / 2
+	index++
 	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%2.2f weighted rows", weightedRows)
 
 	var rowTransitions int
 	// Empty rows always contain two transitions (where the walls neighbor the
 	// open playfield).
-	rowTransitions += 2 * (roof - c.summit)
+	// rowTransitions += 2 * (roof - c.summit)
 	// We will shift the row left once and surround it with filled wall bits.
 	// Then, we can xor this with the original that has two filled bits on the
 	// left border. What is left is a row with set bits in place of transitions.
 	for i := c.summit; i >= slab; i-- {
 		row := c.board[i]
-		rowTransitions += bits.OnesCount64(((row << 1) | walledRow) ^ (row | leftBorderRow))
+		rowTransitions += bits.OnesCount64(((row<<1)|walledRow)^(row|leftBorderRow)) - 2
 	}
 	index++
 	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d row transitions", rowTransitions)
@@ -141,27 +140,6 @@ func insertDebugInfo(str string, s signal) string {
 	index++
 	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d hole quota", quota)
 
-	var safeSZ int
-	var sMap, zMap uint
-	for i := 0; i < len(heightDiffs); i++ {
-		switch heightDiffs[i] {
-		case 1:
-			zMap |= 1 << (i + 1)
-		case -1:
-			sMap |= 1 << (i + 1)
-		}
-	}
-	if zMap != 0 && sMap != 0 {
-		if (zMap<<1&^sMap == 0 && bits.OnesCount(sMap>>1&^zMap|sMap<<1&^zMap) > 2) ||
-			(sMap<<1&^zMap == 0 && bits.OnesCount(zMap>>1&^sMap|zMap<<1&^sMap) > 2) ||
-			(zMap<<1&^sMap != 0 && sMap<<1&^zMap != 0) ||
-			(bits.OnesCount(zMap) > 1 && bits.OnesCount(sMap) > 1) {
-			safeSZ = 1
-		}
-	}
-	index++
-	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d safeSZ", safeSZ)
-
 	var wellTraps int
 	// Wall cases
 	if heightDiffs[0] < 0 && heightDiffs[1] == 1 {
@@ -182,6 +160,32 @@ func insertDebugInfo(str string, s signal) string {
 	}
 	index++
 	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d well traps", wellTraps)
+
+	var safeSZ, safeO int
+	var sMap, zMap uint
+	for i := 0; i < len(heightDiffs); i++ {
+		switch heightDiffs[i] {
+		case 1:
+			zMap |= 1 << (i + 1)
+		case -1:
+			sMap |= 1 << (i + 1)
+		case 0:
+			safeO = 1
+		}
+	}
+	if zMap != 0 && sMap != 0 {
+		if (zMap<<1&^sMap == 0 && bits.OnesCount(sMap>>1&^zMap|sMap<<1&^zMap) > 2) ||
+			(sMap<<1&^zMap == 0 && bits.OnesCount(zMap>>1&^sMap|zMap<<1&^sMap) > 2) ||
+			(zMap<<1&^sMap != 0 && sMap<<1&^zMap != 0) ||
+			(bits.OnesCount(zMap) > 1 && bits.OnesCount(sMap) > 1) {
+			safeSZ = 1
+		}
+	}
+	index++
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d safeSZ", safeSZ)
+	index++
+	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%4d safeO", safeO)
+
 	return strings.Join(rows, "\n") + "\n"
 }
 

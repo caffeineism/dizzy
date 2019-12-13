@@ -11,7 +11,7 @@ import (
 
 var (
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	botGo      = flag.Int("b", -1, "run bot with speed in ms. 0 plays without rendering.")
+	botGo      = flag.Int("b", -1, "run bot with specified speed in ms. 0 plays without rendering.")
 	optimize   = flag.Int("o", 0, "run strategy optimization with a specified number of games per trial")
 )
 
@@ -40,7 +40,10 @@ func main() {
 	case *optimize > 0:
 		ce := testStrat.newCrossEntropy(*optimize)
 		ce.run()
+	default:
+		initRender()
 	}
+
 }
 
-var testStrat = strategy{-7.27, -2.85, -5.31, -6.29, -6.00, -4.28, -0.46, 2.53, -1.62}
+var testStrat = strategy{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}

@@ -78,31 +78,34 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 		// features this way, while not ideal, speeds up execution by 26%.
 
 		// weightedRows captures and generalizes the information contained by the
-		// features "landing height" and "cleared lines." Imagine if the current
-		// board's filled cells were stacked on top of all previously cleared rows.
-		// Sum each row index multiplied by how many cells are filled in that row.
-		weightedRows := float64(c.totalLines*(c.totalLines+1)) / 2
+		// features "landing height" and "cleared lines." This allows fair
+		// comparison between two boards that have placed the same number of pieces
+		// but may have cleared different amounts of lines, no matter how many ply
+		// deep. The underlying principle is that it is better to concentrate filled
+		// rows near the bottom.
+		var weightedRows float64
+		psuedoLines := float64(c.totalLines) - float64(c.totalPieces*pieceFilledCells)/float64(bWidth)
 		for i := c.summit; i >= slab; i-- {
 			filled := float64(bits.OnesCount64(c.board[i]))
-			weightedRows += filled / float64(bWidth) * float64(c.totalLines+i-slab+1)
+			weightedRows += filled / float64(bWidth) * (float64(i-slab+1) + psuedoLines)
 		}
-		factor := float64(c.totalPieces*pieceFilledCells) / float64(bWidth)
-		weightedRows -= factor * (factor + 1) / 2
+		weightedRows += psuedoLines * (psuedoLines + 1) / 2
 		score += strat[0] * float64(weightedRows)
 
 		// rowTransitions counts how many times a filled cell neighbors an empty cell to
-		// its left or right. The left and right walls count as filled.
+		// its left or right. The left and right walls count as filled. Two is
+		// removed from every row (including empty rows that would normally be
+		// 2).
 		// Adapted from Dellacherie's original feature.
 		var rowTransitions int
 		// Empty rows always contain two transitions (where the walls neighbor the
 		// open playfield).
-		rowTransitions += 2 * (roof - c.summit)
 		// We will shift the row left once and surround it with filled wall bits.
 		// Then, we can xor this with the original that has two filled bits on the
 		// left border. What is left is a row with set bits in place of transitions.
 		for i := c.summit; i >= slab; i-- {
 			row := c.board[i]
-			rowTransitions += bits.OnesCount64(((row << 1) | walledRow) ^ (row | leftBorderRow))
+			rowTransitions += bits.OnesCount64(((row<<1)|walledRow)^(row|leftBorderRow)) - 2
 		}
 		score += strat[1] * float64(rowTransitions)
 
@@ -193,32 +196,6 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 		}
 		score += strat[6] * float64(quota)
 
-		// safeSZ asks "if we received both S and Z simultaneously, could
-		// we place them both without creating a hole and without overlapping one
-		// another?" Horizontal S and Z placements are ignored. This means that the
-		// surface is resilent against floods of S and Z, since the shapes
-		// self-perpetuate and allow future S and Zs as long as the board's height
-		// permits.
-		var safeSZ int
-		var sMap, zMap uint
-		for i := 0; i < len(heightDiffs); i++ {
-			switch heightDiffs[i] {
-			case 1:
-				zMap |= 1 << (i + 1)
-			case -1:
-				sMap |= 1 << (i + 1)
-			}
-		}
-		if zMap != 0 && sMap != 0 {
-			if (zMap<<1&^sMap == 0 && bits.OnesCount(sMap>>1&^zMap|sMap<<1&^zMap) > 2) ||
-				(sMap<<1&^zMap == 0 && bits.OnesCount(zMap>>1&^sMap|zMap<<1&^sMap) > 2) ||
-				(zMap<<1&^sMap != 0 && sMap<<1&^zMap != 0) ||
-				(bits.OnesCount(zMap) > 1 && bits.OnesCount(sMap) > 1) {
-				safeSZ = 1
-			}
-		}
-		score += strat[7] * float64(safeSZ)
-
 		// wellTraps counts the number of 0103 surface patterns. While these
 		// patterns allow placements for S and Z, they make a 3-deep well in doing
 		// so.
@@ -240,7 +217,36 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 				wellTraps++
 			}
 		}
-		score += strat[8] * float64(wellTraps)
+		score += strat[7] * float64(wellTraps)
+
+		// safeSZ asks "if we received both S and Z simultaneously, could
+		// we place them both without creating a hole and without overlapping one
+		// another?" Horizontal S and Z placements are ignored. This means that the
+		// surface is resilent against floods of S and Z, since the shapes
+		// self-perpetuate and allow future S and Zs as long as the board's height
+		// permits.
+		var safeSZ, safeO int
+		var sMap, zMap uint
+		for i := 0; i < len(heightDiffs); i++ {
+			switch heightDiffs[i] {
+			case 1:
+				zMap |= 1 << (i + 1)
+			case -1:
+				sMap |= 1 << (i + 1)
+			case 0:
+				safeO = 1
+			}
+		}
+		if zMap != 0 && sMap != 0 {
+			if (zMap<<1&^sMap == 0 && bits.OnesCount(sMap>>1&^zMap|sMap<<1&^zMap) > 2) ||
+				(sMap<<1&^zMap == 0 && bits.OnesCount(zMap>>1&^sMap|zMap<<1&^sMap) > 2) ||
+				(zMap<<1&^sMap != 0 && sMap<<1&^zMap != 0) ||
+				(bits.OnesCount(zMap) > 1 && bits.OnesCount(sMap) > 1) {
+				safeSZ = 1
+			}
+		}
+		score += strat[8] * float64(safeSZ)
+		score += strat[9] * float64(safeO)
 
 		// ********** END FEATURES *************************************************
 
