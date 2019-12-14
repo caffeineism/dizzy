@@ -46,4 +46,4 @@ func main() {
 
 }
 
-var testStrat = strategy{0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+var testStrat = strategy{-1.05, -3.53, -3.69, -12.23, -5.68, -8.52, -0.84, -4.49, 4.20}

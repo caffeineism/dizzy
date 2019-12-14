@@ -50,19 +50,16 @@ func insertDebugInfo(str string, s signal) string {
 	}
 
 	var weightedRows float64
-	psuedoLines := float64(c.totalLines) - float64(c.totalPieces*pieceFilledCells)/float64(bWidth)
+	psuedoLines := float64(c.totalPieces*pieceFilledCells)/float64(bWidth) - float64(c.totalLines)
 	for i := c.summit; i >= slab; i-- {
 		filled := float64(bits.OnesCount64(c.board[i]))
 		weightedRows += filled / float64(bWidth) * (float64(i-slab+1) + psuedoLines)
 	}
-	weightedRows += psuedoLines * (psuedoLines + 1) / 2
+	weightedRows -= psuedoLines * (psuedoLines + 1) / 2
 	index++
 	rows[index%bHeight] = rows[index%bHeight] + fmt.Sprintf("\t%2.2f weighted rows", weightedRows)
 
 	var rowTransitions int
-	// Empty rows always contain two transitions (where the walls neighbor the
-	// open playfield).
-	// rowTransitions += 2 * (roof - c.summit)
 	// We will shift the row left once and surround it with filled wall bits.
 	// Then, we can xor this with the original that has two filled bits on the
 	// left border. What is left is a row with set bits in place of transitions.

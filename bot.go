@@ -84,12 +84,12 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 		// deep. The underlying principle is that it is better to concentrate filled
 		// rows near the bottom.
 		var weightedRows float64
-		psuedoLines := float64(c.totalLines) - float64(c.totalPieces*pieceFilledCells)/float64(bWidth)
+		psuedoLines := float64(c.totalPieces*pieceFilledCells)/float64(bWidth) - float64(c.totalLines)
 		for i := c.summit; i >= slab; i-- {
 			filled := float64(bits.OnesCount64(c.board[i]))
 			weightedRows += filled / float64(bWidth) * (float64(i-slab+1) + psuedoLines)
 		}
-		weightedRows += psuedoLines * (psuedoLines + 1) / 2
+		weightedRows -= psuedoLines * (psuedoLines + 1) / 2
 		score += strat[0] * float64(weightedRows)
 
 		// rowTransitions counts how many times a filled cell neighbors an empty cell to
@@ -98,8 +98,6 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 		// 2).
 		// Adapted from Dellacherie's original feature.
 		var rowTransitions int
-		// Empty rows always contain two transitions (where the walls neighbor the
-		// open playfield).
 		// We will shift the row left once and surround it with filled wall bits.
 		// Then, we can xor this with the original that has two filled bits on the
 		// left border. What is left is a row with set bits in place of transitions.
@@ -225,7 +223,7 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 		// surface is resilent against floods of S and Z, since the shapes
 		// self-perpetuate and allow future S and Zs as long as the board's height
 		// permits.
-		var safeSZ, safeO int
+		var safeSZ int
 		var sMap, zMap uint
 		for i := 0; i < len(heightDiffs); i++ {
 			switch heightDiffs[i] {
@@ -233,8 +231,6 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 				zMap |= 1 << (i + 1)
 			case -1:
 				sMap |= 1 << (i + 1)
-			case 0:
-				safeO = 1
 			}
 		}
 		if zMap != 0 && sMap != 0 {
@@ -246,7 +242,6 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 			}
 		}
 		score += strat[8] * float64(safeSZ)
-		score += strat[9] * float64(safeO)
 
 		// ********** END FEATURES *************************************************
 

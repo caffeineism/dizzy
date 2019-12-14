@@ -34,7 +34,7 @@ func (s strategy) newCrossEntropy(numOfGames int) crossEntropy {
 		means:      s,
 		variances:  initVariances(len(s), 10),
 		population: 100,
-		noise:      0.02,
+		noise:      0.03,
 		rho:        0.1,                    // Top percent of population to consider
 		lambda:     0.04 / float64(len(s)), // L1 regularization constant
 		numOfGames: numOfGames,
