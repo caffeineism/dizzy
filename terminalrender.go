@@ -244,7 +244,7 @@ func stringPiece(r uint64) string {
 func (s strategy) string() string {
 	var sb strings.Builder
 	for i := 0; i < len(s); i++ {
-		sb.WriteString(fmt.Sprintf("%	6.2f, ", s[i]))
+		sb.WriteString(fmt.Sprintf("%6.2f, ", s[i]))
 	}
 	return sb.String()[:len(sb.String())-2]
 }
