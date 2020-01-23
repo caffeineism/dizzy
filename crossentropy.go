@@ -197,7 +197,7 @@ func getVariance(data []float64, mean float64) float64 {
 		diffs := data[i] - mean
 		squaredDiffs += diffs * diffs
 	}
-	return squaredDiffs / float64(len(data))
+	return squaredDiffs / (float64(len(data)) - 1) // Bessel's correction
 }
 
 func writeToFile(str, file string) {

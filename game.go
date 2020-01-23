@@ -91,7 +91,7 @@ func (p pos) descend(delta int) pos {
 const numForms = 4
 
 func (p pos) rotate(delta int) pos {
-	p.form = ((p.form+delta)%numForms + numForms) % numForms
+	p.form = ((p.form+delta)%numForms + numForms) %	numForms
 	return p
 }
 

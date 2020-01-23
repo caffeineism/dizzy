@@ -73,7 +73,7 @@ func findBestPlacement(sig signal, strat strategy, placements []pos) pos {
 		// allowing findBestPlacement to cleanly iterate over them. Unfortunately,
 		// this resulted in much of the execution tied up in runtime.duffcopy due
 		// to having to copy over the signal struct redundantly. Passing the struct
-		// to the functions as a pointer resulted in a 9% slowdown, likely because
+		// to the functions as a pointer resulted in a 9%	slowdown, likely because
 		// it increases the work Go's garbage collector had to do. Rolling out the
 		// features this way, while not ideal, speeds up execution by 26%.
 

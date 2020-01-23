@@ -108,13 +108,13 @@ func initRender() {
 					case keySet.cw:
 						p := cb.rotate(1)
 						if cb.allows(p) {
-							cb.pos = p
+							cb.updatePos(p)
 						}
 
 					case keySet.ccw:
 						p := cb.rotate(-1)
 						if cb.allows(p) {
-							cb.pos = p
+							cb.updatePos(p)
 						}
 					}
 				}
@@ -137,12 +137,12 @@ func moveAction(cb *colorBoard, delta int, buf screen.Buffer, win screen.Window,
 	cb.mu.Unlock()
 	p := cb.move(delta)
 	if cb.allows(p) {
-		cb.pos = p
+		cb.updatePos(p)
 	}
 	renderBoard(cb, win, buf)
 	time.Sleep(delaySideInit * time.Millisecond)
 	if stamp == cb.keyStamps[key] {
-		cb.pos = cb.instantMove(delta, cb.board)
+		cb.updatePos(cb.instantMove(delta, cb.board))
 	}
 	renderBoard(cb, win, buf)
 }
@@ -154,12 +154,13 @@ func descendAction(cb *colorBoard, delta int, buf screen.Buffer, win screen.Wind
 	cb.mu.Unlock()
 	p := cb.descend(delta)
 	if cb.allows(p) {
-		cb.pos = p
+		cb.updatePos(p)
 	}
+
 	renderBoard(cb, win, buf)
 	time.Sleep(delayVertInit * time.Millisecond)
 	if stamp == cb.keyStamps[key] {
-		cb.pos = cb.instantDescend(delta, cb.board)
+		cb.updatePos(cb.instantDescend(delta, cb.board))
 	}
 	renderBoard(cb, win, buf)
 }
@@ -289,8 +290,14 @@ func (cb *colorBoard) colorMerge() {
 	cb.agent = cb.lockAndNewPiece()
 }
 
+func (cb *colorBoard) updatePos(p pos) {
+	cb.mu.Lock()
+	cb.pos = p
+	cb.mu.Unlock()
+}
+
 func (cb *colorBoard) colorLock() {
-	cb.pos = cb.instantDescend(1, cb.board)
+	cb.updatePos(cb.instantDescend(1, cb.board))
 	cb.colorMerge()
 }
 
@@ -311,8 +318,8 @@ func getKeys() keySet {
 }
 
 func renderBoard(cb *colorBoard, win screen.Window, buf screen.Buffer) {
-	cb.print()
 	cb.mu.Lock()
+	cb.print()
 	drawToBuffer(buf.RGBA(), cb)
 	win.Upload(image.Point{}, buf, buf.Bounds())
 	cb.mu.Unlock()
